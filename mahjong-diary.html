@@ -1,0 +1,660 @@
+﻿<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>麻将日记</title>
+<style>
+:root{
+  --bg:#f6f2ff;
+  --bg-soft:#fcfaff;
+  --card:#ffffff;
+  --brand:#9d8cff;
+  --brand-deep:#7c68e6;
+  --brand-soft:#efeaff;
+  --text:#241d38;
+  --sub:#7d7694;
+  --line:#ece5ff;
+  --win:#7c68e6;
+  --loss:#d688b2;
+  --danger:#ff6d8f;
+  --danger-deep:#ef4d74;
+  --shadow:0 20px 45px rgba(118,93,198,.12);
+  --radius:28px;
+  --pill:999px;
+  --safe-bottom:18px;
+}
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+body{
+  font-family:"Microsoft YaHei","PingFang SC",sans-serif;
+  background:radial-gradient(circle at top,#ffffff 0%,#f4efff 45%,#eee7ff 100%);
+  color:var(--text);
+  min-height:100vh;
+  display:grid;
+  place-items:center;
+  padding:24px;
+}
+.phone{
+  width:390px;
+  height:844px;
+  background:linear-gradient(180deg,#fffefe 0%,#f8f5ff 100%);
+  border-radius:40px;
+  box-shadow:0 35px 80px rgba(98,79,162,.18);
+  overflow:hidden;
+  position:relative;
+  border:1px solid rgba(255,255,255,.88);
+}
+.phone::before{
+  content:"";
+  position:absolute;
+  inset:0;
+  background:radial-gradient(circle at 20% 0%,rgba(255,255,255,.95),transparent 32%),radial-gradient(circle at 100% 10%,rgba(191,176,255,.18),transparent 28%);
+  pointer-events:none;
+}
+.screen{
+  height:100%;
+  overflow:auto;
+  padding:14px 14px calc(96px + var(--safe-bottom));
+  scrollbar-width:none;
+  position:relative;
+  z-index:1;
+}
+.screen::-webkit-scrollbar{display:none}
+.status{display:flex;justify-content:space-between;align-items:center;padding:6px 8px 12px;font-weight:800;font-size:16px}
+.signal{display:flex;gap:8px;align-items:center;color:#57506c}
+.signal span{display:block;width:8px;height:8px;border-radius:50%;background:#57506c;opacity:.9;animation:blinkDot 2.4s infinite}
+.signal span:nth-child(2){animation-delay:.2s}.signal span:nth-child(3){animation-delay:.4s}
+.signal i{display:block;width:24px;height:12px;border:2px solid #57506c;border-radius:4px;position:relative}
+.signal i::after{content:"";position:absolute;right:-4px;top:3px;width:2px;height:4px;background:#57506c;border-radius:1px}
+.page{display:none;animation:pageIn .32s cubic-bezier(.2,.75,.2,1)}
+.page.active{display:block}
+@keyframes pageIn{from{opacity:0;transform:translateY(14px) scale(.985)}to{opacity:1;transform:none}}
+@keyframes blinkDot{0%,100%{opacity:.45}50%{opacity:1}}
+@keyframes floatSoft{0%,100%{transform:translateY(0)}50%{transform:translateY(-4px)}}
+@keyframes glowShift{0%,100%{opacity:.45;transform:translateX(0)}50%{opacity:.9;transform:translateX(8px)}}
+@keyframes pulseChip{0%,100%{transform:scale(1)}50%{transform:scale(1.03)}}
+.topbar{display:flex;align-items:center;gap:12px;margin-bottom:18px}
+.logo,.icon-btn,.back-btn{
+  width:44px;height:44px;border:none;border-radius:18px;background:var(--card);box-shadow:var(--shadow);display:grid;place-items:center;font-size:18px;font-weight:900;color:var(--brand-deep);cursor:pointer;transition:.22s transform,.22s box-shadow,.22s background
+}
+.logo{background:linear-gradient(135deg,var(--brand),#baaaff);color:#fff;animation:floatSoft 3.6s ease-in-out infinite}
+.logo:active,.icon-btn:active,.back-btn:active,.btn:active,.nav-item:active{transform:scale(.97)}
+.icon-btn:hover,.back-btn:hover{transform:translateY(-1px);box-shadow:0 16px 26px rgba(118,93,198,.16)}
+.title{flex:1}
+.title strong{display:block;font-size:18px;line-height:1.2}
+.title span{display:block;margin-top:4px;font-size:12px;color:var(--sub)}
+.card{background:rgba(255,255,255,.94);border:1px solid var(--line);border-radius:var(--radius);box-shadow:var(--shadow);transition:.25s transform,.25s box-shadow}
+.card:hover{transform:translateY(-1px);box-shadow:0 24px 48px rgba(118,93,198,.14)}
+.hero{
+  padding:22px;
+  background:linear-gradient(135deg,#a99aff 0%,#8f7ef3 62%,#7c68e6 100%);
+  color:#fff;
+  position:relative;
+  overflow:hidden;
+}
+.hero::before{
+  content:"";
+  position:absolute;
+  inset:auto -20% 8% auto;
+  width:180px;height:180px;border-radius:50%;
+  background:radial-gradient(circle,rgba(255,255,255,.24),rgba(255,255,255,0));
+  animation:floatSoft 4.5s ease-in-out infinite;
+}
+.hero::after{
+  content:"";
+  position:absolute;
+  top:0;left:-45%;width:38%;height:100%;
+  background:linear-gradient(90deg,transparent,rgba(255,255,255,.18),transparent);
+  transform:skewX(-22deg);
+  animation:glowShift 4.8s ease-in-out infinite;
+}
+.eyebrow{display:inline-flex;padding:8px 12px;border-radius:999px;background:rgba(255,255,255,.16);font-size:12px;font-weight:800;margin-bottom:16px;animation:pulseChip 3s ease-in-out infinite}
+.hero h1{font-size:24px;line-height:1.25;margin-bottom:10px;position:relative;z-index:1}
+.hero p{font-size:13px;line-height:1.75;color:rgba(255,255,255,.92);position:relative;z-index:1}
+.hero-actions,.row-actions{display:flex;gap:12px;margin-top:18px;position:relative;z-index:1}
+.btn{flex:1;border:none;border-radius:999px;padding:14px 16px;font-size:16px;font-weight:900;cursor:pointer;transition:.22s transform,.22s box-shadow,.22s opacity;position:relative;overflow:hidden}
+.btn::after{content:"";position:absolute;inset:0;background:linear-gradient(120deg,transparent,rgba(255,255,255,.18),transparent);transform:translateX(-120%);transition:.45s}
+.btn:hover::after{transform:translateX(120%)}
+.btn:hover{transform:translateY(-1px)}
+.btn-primary{background:#fff;color:var(--brand-deep)}
+.btn-secondary{background:rgba(255,255,255,.14);color:#fff;border:1px solid rgba(255,255,255,.22)}
+.btn-soft{background:#f1eef9;color:#756d89}
+.btn-solid{background:linear-gradient(135deg,var(--brand),var(--brand-deep));color:#fff;box-shadow:0 14px 28px rgba(127,108,224,.28)}
+.metrics{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-top:18px;position:relative;z-index:1}
+.metric{background:rgba(255,255,255,.14);border:1px solid rgba(255,255,255,.16);padding:14px;border-radius:22px;backdrop-filter:blur(10px);animation:floatSoft 4s ease-in-out infinite}
+.metric:nth-child(2){animation-delay:.25s}.metric:nth-child(3){animation-delay:.45s}
+.metric strong{display:block;font-size:16px;font-weight:900}
+.metric span{display:block;margin-top:6px;font-size:12px;color:rgba(255,255,255,.82);line-height:1.5}
+.section{margin-top:18px;animation:pageIn .35s ease both}
+.section:nth-of-type(2){animation-delay:.06s}.section:nth-of-type(3){animation-delay:.12s}
+.section-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;padding:0 4px}
+.section-head h3{font-size:16px}.section-head span{font-size:12px;color:var(--sub)}
+.friend-card,.form-card,.summary-card,.trend-card{padding:16px}
+.share-strip{display:flex;gap:8px;flex-wrap:wrap}
+.share-tag,.meta{display:inline-flex;align-items:center;padding:6px 10px;border-radius:999px;background:var(--brand-soft);font-size:11px;font-weight:800;color:var(--brand-deep);transition:.2s transform,.2s background}
+.share-tag{animation:pulseChip 3.4s ease-in-out infinite}
+.share-tag:nth-child(2){animation-delay:.2s}.share-tag:nth-child(3){animation-delay:.4s}
+.meta:hover,.share-tag:hover{transform:translateY(-1px);background:#e8e0ff}
+.friend-list,.record-list,.summary-list{display:grid;gap:12px}
+.friend-item,.summary-item{display:flex;gap:12px;padding:14px;border-radius:22px;background:#fcfbff;border:1px solid var(--line);transition:.22s transform,.22s box-shadow}
+.friend-item:hover,.summary-item:hover{transform:translateY(-1px);box-shadow:0 12px 24px rgba(118,93,198,.08)}
+.stamp{width:54px;height:54px;border-radius:18px;display:grid;place-items:center;flex-shrink:0;font-size:22px;font-weight:900;color:#fff;background:linear-gradient(135deg,var(--brand),#baaaff);box-shadow:0 12px 20px rgba(157,140,255,.22)}
+.stamp.loss{background:linear-gradient(135deg,#c98ab0,#e6aac8)}
+.friend-copy,.record-copy,.summary-copy{flex:1}
+.friend-copy strong,.record-copy strong,.summary-copy strong{display:block;font-size:15px;font-weight:900}
+.friend-copy p,.record-copy p,.summary-copy p{margin-top:4px;font-size:12px;color:var(--sub);line-height:1.7}
+.record-swiper{position:relative;overflow:hidden;border-radius:24px}
+.record-delete-bg{position:absolute;top:0;right:0;bottom:0;width:88px;background:linear-gradient(180deg,var(--danger),var(--danger-deep));display:flex;align-items:center;justify-content:center;color:#fff;font-size:22px;border-radius:24px;box-shadow:0 12px 22px rgba(239,77,116,.22);opacity:0;pointer-events:none;transition:.2s opacity,.2s transform;transform:translateX(8px)}
+.record-delete-bg span{font-size:20px;transform:translateX(6px)}
+.record-swiper.is-open .record-delete-bg{opacity:1;pointer-events:auto;transform:none}
+.record-item{position:relative;display:flex;gap:12px;padding:14px;border-radius:22px;background:#fcfbff;border:1px solid var(--line);transition:transform .24s cubic-bezier(.2,.8,.2,1),box-shadow .24s;touch-action:pan-y;will-change:transform}
+.record-item.swiped{transform:translateX(-88px);box-shadow:0 14px 28px rgba(239,77,116,.12)}
+.record-item .amount-line{display:flex;justify-content:space-between;gap:12px;align-items:flex-start}
+.amount{font-size:22px;font-weight:900;white-space:nowrap}
+.amount.win{color:var(--win)}
+.amount.loss{color:var(--loss)}
+.empty-note{padding:28px 18px;text-align:center;color:var(--sub);font-size:13px;line-height:1.8}
+.form{display:grid;gap:12px}
+.field{display:grid;gap:8px}
+.field label{font-size:13px;font-weight:800}
+.field input,.field select,.field textarea{width:100%;border:none;background:#f6f4fd;border-radius:18px;padding:14px 16px;font-size:14px;outline:none;color:var(--text);border:1px solid #f0ebff;transition:.2s border-color,.2s box-shadow,.2s transform}
+.field input:focus,.field select:focus,.field textarea:focus{border-color:#d7cbff;box-shadow:0 0 0 4px rgba(157,140,255,.12);transform:translateY(-1px)}
+.field textarea{min-height:88px;resize:none}
+.chart{height:180px;border-radius:22px;background:linear-gradient(180deg,#faf8ff,#ffffff);border:1px solid var(--line);padding:16px;display:flex;align-items:flex-end;gap:10px}
+.bar-col{flex:1;display:flex;flex-direction:column;align-items:center;gap:8px}
+.bar{width:100%;max-width:34px;border-radius:14px 14px 8px 8px;background:linear-gradient(180deg,#baaaff,#7f6ce0);min-height:10px;animation:barRise .45s ease both}
+.bar.loss{background:linear-gradient(180deg,#e7bdd1,#d28aae)}
+@keyframes barRise{from{transform:scaleY(.35);transform-origin:bottom;opacity:.35}to{transform:scaleY(1);transform-origin:bottom;opacity:1}}
+.bar-label{font-size:11px;color:var(--sub)}.bar-value{font-size:11px;font-weight:800}
+.bottom-nav{position:absolute;left:14px;right:14px;bottom:calc(10px + var(--safe-bottom));padding:12px 10px;background:rgba(255,255,255,.94);border:1px solid rgba(255,255,255,.98);border-radius:28px;box-shadow:0 18px 30px rgba(73,54,33,.10);display:grid;grid-template-columns:repeat(4,1fr);gap:6px;backdrop-filter:blur(14px);z-index:8}
+.nav-item{display:grid;justify-items:center;gap:4px;font-size:11px;font-weight:800;color:#9a90b0;cursor:pointer;transition:.22s transform,.22s color}
+.nav-item i{font-style:normal;font-size:18px;transition:.22s transform}
+.nav-item.active{color:var(--brand-deep);transform:translateY(-2px)}
+.nav-item.active i{transform:scale(1.08)}
+.toast{position:fixed;left:50%;bottom:24px;transform:translateX(-50%) translateY(12px);padding:12px 16px;border-radius:16px;background:rgba(37,31,54,.92);color:#fff;font-size:13px;opacity:0;pointer-events:none;transition:.25s;z-index:50;box-shadow:0 16px 30px rgba(37,31,54,.18)}
+.toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+</style>
+</head>
+<body>
+<div class="phone">
+  <div class="screen">
+    <div class="status">
+      <span>9:41</span>
+      <div class="signal"><span></span><span></span><span></span><i></i></div>
+    </div>
+
+    <section class="page active" id="page-share">
+      <div class="topbar">
+        <div class="logo">麻</div>
+        <div class="title">
+          <strong>麻将日记</strong>
+          <span>和小龙共享，但各记各的牌局</span>
+        </div>
+        <button class="icon-btn" data-open-page="record">＋</button>
+      </div>
+
+      <div class="hero card">
+        <div class="eyebrow">固定牌友小组共享</div>
+        
+        <div class="hero-actions">
+          <button class="btn btn-primary" data-open-page="record">记一场</button>
+          <button class="btn btn-secondary" data-open-page="month">看月度总结</button>
+        </div>
+        <div class="metrics">
+          <div class="metric"><strong id="metricTotalCount">本月 0 场</strong><span>合计记录</span></div>
+          <div class="metric"><strong id="metricPoemNet">¥0</strong><span>小诗本月净额</span></div>
+          <div class="metric"><strong id="metricDragonNet">¥0</strong><span>小龙本月净额</span></div>
+        </div>
+      </div>
+
+      <section class="section">
+        <div class="section-head"><h3>共享牌友</h3><span>固定两人可见</span></div>
+        <div class="friend-card card">
+          <div class="share-strip">
+            <span class="share-tag">实时同步</span>
+            <span class="share-tag">彼此可见</span>
+            <span class="share-tag">月底汇总</span>
+          </div>
+          <div class="friend-list" style="margin-top:14px">
+            <div class="friend-item">
+              <div class="stamp">诗</div>
+              <div class="friend-copy">
+                <strong>小诗</strong>
+                <p id="friendPoemDesc">还没有记录，等你记下第一场之后，这里会自动更新。</p>
+                <div class="meta-row">
+                  <span class="meta" id="friendPoemCount">本月 0 场</span>
+                  <span class="meta" id="friendPoemBest">最高单场 暂无</span>
+                </div>
+              </div>
+            </div>
+            <div class="friend-item">
+              <div class="stamp loss">龙</div>
+              <div class="friend-copy">
+                <strong>小龙</strong>
+                <p id="friendDragonDesc">目前也还是空白，记录保存后你们两边都会同步显示。</p>
+                <div class="meta-row">
+                  <span class="meta" id="friendDragonCount">本月 0 场</span>
+                  <span class="meta" id="friendDragonBest">最高单场 暂无</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section class="section">
+        <div class="section-head"><h3>最近牌局</h3><span>左滑可删除</span></div>
+        <div class="record-list" id="recentRecords"></div>
+      </section>
+    </section>
+
+    <section class="page" id="page-record">
+      <div class="topbar">
+        <button class="back-btn" data-back-share>←</button>
+        <div class="title">
+          <strong>记一场牌局</strong>
+          <span>只记时间和输赢金额，够快就好</span>
+        </div>
+      </div>
+      <div class="form-card card">
+        <div class="section-head"><h3>新增记录</h3><span>30 秒记完</span></div>
+        <div class="form">
+          <div class="field"><label>牌局时间</label><input id="recordTime" type="datetime-local"></div>
+          <div class="field"><label>记录给谁</label><select id="recordPerson"><option>小诗</option><option>小龙</option></select></div>
+          <div class="field"><label>本场结果</label><select id="recordResult"><option>赢了</option><option>输了</option></select></div>
+          <div class="field"><label>输赢金额</label><input id="recordAmount" type="number" placeholder="例如：150"></div>
+          <div class="field"><label>牌局地点（可选）</label><input id="recordLocation" placeholder="可不填，例如：家里 / 楼下棋牌室"></div>
+          <div class="field"><label>牌搭子（可选）</label><input id="recordPartners" placeholder="可不填，例如：朋友局 / 家人局"></div>
+          <div class="field"><label>简单备注（可选）</label><textarea id="recordNote" placeholder="可不填，例如：今天手气不错，后半场追回来了"></textarea></div>
+        </div>
+        <div class="row-actions">
+          <button class="btn btn-soft" id="draftBtn">存草稿</button>
+          <button class="btn btn-solid" id="saveRecordBtn">保存记录</button>
+        </div>
+      </div>
+    </section>
+
+    <section class="page" id="page-month">
+      <div class="topbar">
+        <button class="back-btn" data-back-share>←</button>
+        <div class="title"><strong>月度总结</strong><span>胜负趋势图和总金额</span></div>
+      </div>
+      <div class="summary-card card">
+        <div class="section-head"><h3 id="monthTitle">本月总结</h3><span>自动生成</span></div>
+        <div class="summary-list">
+          <div class="summary-item">
+            <div class="stamp">诗</div>
+            <div class="summary-copy">
+              <strong id="monthPoemTitle">小诗本月暂无记录</strong>
+              <p id="monthPoemDesc">先记下第一场，系统才会开始计算净额和趋势。</p>
+              <div class="meta-row"><span class="meta" id="monthPoemBest">最高单场 暂无</span><span class="meta" id="monthPoemCount">记录 0 场</span></div>
+            </div>
+          </div>
+          <div class="summary-item">
+            <div class="stamp loss">龙</div>
+            <div class="summary-copy">
+              <strong id="monthDragonTitle">小龙本月暂无记录</strong>
+              <p id="monthDragonDesc">等有记录后，这里会自动展示净额和月度变化。</p>
+              <div class="meta-row"><span class="meta" id="monthDragonBest">最高单场 暂无</span><span class="meta" id="monthDragonCount">记录 0 场</span></div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <section class="section">
+        <div class="trend-card card">
+          <div class="section-head"><h3>胜负趋势图</h3><span>按周查看</span></div>
+          <div class="chart" id="trendChart"></div>
+        </div>
+      </section>
+    </section>
+
+    <section class="page" id="page-me">
+      <div class="topbar">
+        <div class="logo">记</div>
+        <div class="title"><strong>我的</strong><span>总金额、记录偏好、共享设置</span></div>
+      </div>
+      <div class="summary-card card">
+        <div class="section-head"><h3>你的麻将日记</h3><span>淡紫简洁感</span></div>
+        <div class="summary-list">
+          <div class="summary-item"><div class="stamp">0</div><div class="summary-copy"><strong id="meCount">本月已记录 0 场</strong><p>现在是空白账本状态，你可以直接开始测试新增记录。</p></div></div>
+          <div class="summary-item"><div class="stamp">¥</div><div class="summary-copy"><strong id="meNet">累计净额 ¥0</strong><p>有了第一条记录后，这里会自动开始累计。</p></div></div>
+        </div>
+      </div>
+      <section class="section">
+        <div class="friend-card card">
+          <div class="section-head"><h3>共享设置</h3><span>固定牌友小组</span></div>
+          <div class="friend-list">
+            <div class="friend-item">
+              <div class="stamp">组</div>
+              <div class="friend-copy">
+                <strong>我和小龙的牌局账本</strong>
+                <p>当前为私密共享，仅你们两人可见，各自记录、统一汇总。</p>
+                <div class="meta-row"><span class="meta">已共享 2 人</span><span class="meta">自动月度总结</span></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+    </section>
+  </div>
+
+  <nav class="bottom-nav">
+    <div class="nav-item active" data-open-page="share"><i>⌂</i><span>共享</span></div>
+    <div class="nav-item" data-open-page="record"><i>＋</i><span>记一场</span></div>
+    <div class="nav-item" data-open-page="month"><i>▥</i><span>月度</span></div>
+    <div class="nav-item" data-open-page="me"><i>○</i><span>我的</span></div>
+  </nav>
+</div>
+<div class="toast" id="toast"></div>
+
+<script>
+const STORAGE_KEY = 'mahjongDiaryRecordsV2';
+const pages = document.querySelectorAll('.page');
+const navItems = document.querySelectorAll('.nav-item');
+const recentRecordsEl = document.getElementById('recentRecords');
+const trendChartEl = document.getElementById('trendChart');
+const SWIPE_WIDTH = 88;
+let openedSwipe = null;
+
+const fields = {
+  time: document.getElementById('recordTime'),
+  person: document.getElementById('recordPerson'),
+  result: document.getElementById('recordResult'),
+  amount: document.getElementById('recordAmount'),
+  location: document.getElementById('recordLocation'),
+  partners: document.getElementById('recordPartners'),
+  note: document.getElementById('recordNote')
+};
+
+function openPage(id){
+  pages.forEach(p => p.classList.toggle('active', p.id === `page-${id}`));
+  navItems.forEach(n => n.classList.toggle('active', n.dataset.openPage === id));
+}
+
+function toast(msg){
+  const el = document.getElementById('toast');
+  el.textContent = msg;
+  el.classList.add('show');
+  clearTimeout(toast.timer);
+  toast.timer = setTimeout(() => el.classList.remove('show'), 2200);
+}
+
+function getNowInputValue(){
+  const now = new Date();
+  const local = new Date(now.getTime() - now.getTimezoneOffset() * 60000);
+  return local.toISOString().slice(0,16);
+}
+
+function resetForm(){
+  fields.time.value = getNowInputValue();
+  fields.person.value = '小诗';
+  fields.result.value = '赢了';
+  fields.amount.value = '';
+  fields.location.value = '';
+  fields.partners.value = '';
+  fields.note.value = '';
+}
+
+function loadRecords(){
+  try { return JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]'); } catch { return []; }
+}
+function saveRecords(records){ localStorage.setItem(STORAGE_KEY, JSON.stringify(records)); }
+function formatMoney(n){ if(n === 0) return '¥0'; return `¥${n > 0 ? '+' : ''}${n}`; }
+function formatDateText(value){
+  if(!value) return '未填写时间';
+  const date = new Date(value);
+  if(Number.isNaN(date.getTime())) return value;
+  const m = date.getMonth() + 1;
+  const d = date.getDate();
+  const hh = String(date.getHours()).padStart(2,'0');
+  const mm = String(date.getMinutes()).padStart(2,'0');
+  return `${m}月${d}日 ${hh}:${mm}`;
+}
+function getMonthRecords(records){
+  const now = new Date();
+  return records.filter(item => {
+    const date = new Date(item.time);
+    return !Number.isNaN(date.getTime()) && date.getFullYear() === now.getFullYear() && date.getMonth() === now.getMonth();
+  });
+}
+function getStats(records, person){
+  const list = records.filter(item => item.person === person);
+  return { list, total: list.reduce((sum, item) => sum + item.net, 0), best: list.length ? Math.max(...list.map(item => item.net)) : null, count: list.length };
+}
+
+function createEmptyRecent(){
+  recentRecordsEl.innerHTML = `
+    <div class="record-item">
+      <div class="stamp">空</div>
+      <div class="record-copy">
+        <strong>还没有牌局记录</strong>
+        <p>先去记一场，保存后这里会出现你刚录入的时间、金额和记录人。</p>
+        <div class="meta-row"><span class="meta">等待你的第一条记录</span></div>
+      </div>
+    </div>`;
+}
+
+function renderRecent(records){
+  openedSwipe = null;
+  if(!records.length){ createEmptyRecent(); return; }
+  recentRecordsEl.innerHTML = records
+    .slice()
+    .sort((a,b) => new Date(b.time) - new Date(a.time))
+    .slice(0,8)
+    .map(item => `
+      <div class="record-swiper">
+        <button class="record-delete-bg" data-delete-id="${item.id}" aria-label="删除记录"><span>🗑</span></button>
+        <div class="record-item" data-record-id="${item.id}">
+          <div class="stamp ${item.net < 0 ? 'loss' : ''}">${item.person === '小诗' ? '诗' : '龙'}</div>
+          <div class="record-copy">
+            <div class="amount-line">
+              <div>
+                <strong>${item.person} · ${item.result}</strong>
+                <p>${formatDateText(item.time)}${item.location ? ' · ' + item.location : ''}</p>
+              </div>
+              <span class="amount ${item.net < 0 ? 'loss' : 'win'}">${formatMoney(item.net)}</span>
+            </div>
+            <div class="meta-row">
+              <span class="meta">记录人 ${item.person}</span>
+              ${item.partners ? `<span class="meta">牌搭子 ${item.partners}</span>` : ''}
+              ${item.note ? `<span class="meta">有备注</span>` : ''}
+            </div>
+          </div>
+        </div>
+      </div>`)
+    .join('');
+  bindSwipeItems();
+}
+
+function renderFriends(statsPoem, statsDragon){
+  document.getElementById('friendPoemDesc').textContent = statsPoem.count ? `本月已记 ${statsPoem.count} 场，当前净额 ${formatMoney(statsPoem.total)}。` : '还没有记录，等你记下第一场之后，这里会自动更新。';
+  document.getElementById('friendPoemCount').textContent = `本月 ${statsPoem.count} 场`;
+  document.getElementById('friendPoemBest').textContent = `最高单场 ${statsPoem.best === null ? '暂无' : formatMoney(statsPoem.best)}`;
+  document.getElementById('friendDragonDesc').textContent = statsDragon.count ? `本月已记 ${statsDragon.count} 场，当前净额 ${formatMoney(statsDragon.total)}。` : '目前也还是空白，记录保存后你们两边都会同步显示。';
+  document.getElementById('friendDragonCount').textContent = `本月 ${statsDragon.count} 场`;
+  document.getElementById('friendDragonBest').textContent = `最高单场 ${statsDragon.best === null ? '暂无' : formatMoney(statsDragon.best)}`;
+}
+
+function renderMetrics(statsPoem, statsDragon, totalCount){
+  document.getElementById('metricTotalCount').textContent = `本月 ${totalCount} 场`;
+  document.getElementById('metricPoemNet').textContent = formatMoney(statsPoem.total);
+  document.getElementById('metricDragonNet').textContent = formatMoney(statsDragon.total);
+  document.getElementById('meCount').textContent = `本月已记录 ${totalCount} 场`;
+  document.getElementById('meNet').textContent = `累计净额 ${formatMoney(statsPoem.total + statsDragon.total)}`;
+}
+
+function renderMonthSummary(statsPoem, statsDragon){
+  document.getElementById('monthTitle').textContent = `${new Date().getMonth() + 1} 月总结`;
+  document.getElementById('monthPoemTitle').textContent = statsPoem.count ? `小诗本月净额 ${formatMoney(statsPoem.total)}` : '小诗本月暂无记录';
+  document.getElementById('monthPoemDesc').textContent = statsPoem.count ? `这个月一共记录了 ${statsPoem.count} 场，趋势会按周自动汇总。` : '先记下第一场，系统才会开始计算净额和趋势。';
+  document.getElementById('monthPoemBest').textContent = `最高单场 ${statsPoem.best === null ? '暂无' : formatMoney(statsPoem.best)}`;
+  document.getElementById('monthPoemCount').textContent = `记录 ${statsPoem.count} 场`;
+  document.getElementById('monthDragonTitle').textContent = statsDragon.count ? `小龙本月净额 ${formatMoney(statsDragon.total)}` : '小龙本月暂无记录';
+  document.getElementById('monthDragonDesc').textContent = statsDragon.count ? `这个月一共记录了 ${statsDragon.count} 场，趋势会按周自动汇总。` : '等有记录后，这里会自动展示净额和月度变化。';
+  document.getElementById('monthDragonBest').textContent = `最高单场 ${statsDragon.best === null ? '暂无' : formatMoney(statsDragon.best)}`;
+  document.getElementById('monthDragonCount').textContent = `记录 ${statsDragon.count} 场`;
+}
+
+function renderTrend(records){
+  const weeks = [0,0,0,0];
+  records.forEach(item => {
+    const date = new Date(item.time);
+    if(Number.isNaN(date.getTime())) return;
+    weeks[Math.min(3, Math.floor((date.getDate()-1)/7))] += item.net;
+  });
+  const maxAbs = Math.max(...weeks.map(v => Math.abs(v)), 1);
+  trendChartEl.innerHTML = weeks.map((value, index) => {
+    const height = value === 0 ? 10 : Math.max(18, Math.round((Math.abs(value) / maxAbs) * 110));
+    return `<div class="bar-col"><div class="bar ${value < 0 ? 'loss' : ''}" style="height:${height}px;opacity:${value === 0 ? '.18' : '1'}"></div><div class="bar-value">${value === 0 ? '暂无' : formatMoney(value)}</div><div class="bar-label">第${index + 1}周</div></div>`;
+  }).join('');
+}
+
+function renderAll(){
+  const allRecords = loadRecords();
+  const monthRecords = getMonthRecords(allRecords);
+  const statsPoem = getStats(monthRecords, '小诗');
+  const statsDragon = getStats(monthRecords, '小龙');
+  renderMetrics(statsPoem, statsDragon, monthRecords.length);
+  renderFriends(statsPoem, statsDragon);
+  renderRecent(allRecords);
+  renderMonthSummary(statsPoem, statsDragon);
+  renderTrend(monthRecords);
+}
+
+function saveRecord(){
+  const amount = Number(fields.amount.value);
+  if(!fields.time.value){ toast('先把牌局时间填一下'); return; }
+  if(!amount){ toast('输赢金额还没填'); return; }
+  const record = {
+    id: Date.now(),
+    person: fields.person.value,
+    result: fields.result.value,
+    net: fields.result.value === '赢了' ? Math.abs(amount) : -Math.abs(amount),
+    amount: Math.abs(amount),
+    time: fields.time.value,
+    location: fields.location.value.trim(),
+    partners: fields.partners.value.trim(),
+    note: fields.note.value.trim()
+  };
+  const records = loadRecords();
+  records.push(record);
+  saveRecords(records);
+  renderAll();
+  openPage('share');
+  resetForm();
+  toast('这一场已经记好了，最近牌局已经更新');
+}
+
+function saveDraft(){ toast('先帮你存成草稿想象版，这版原型暂时不单独保存草稿'); }
+
+function closeOpenedSwipe(except){
+  document.querySelectorAll('.record-swiper').forEach(wrapper => {
+    const el = wrapper.querySelector('.record-item');
+    if(except && el === except) return;
+    el.classList.remove('swiped');
+    wrapper.classList.remove('is-open');
+  });
+  if(!except) openedSwipe = null;
+}
+
+function bindSwipeItems(){
+  const items = recentRecordsEl.querySelectorAll('.record-item[data-record-id]');
+  items.forEach(item => {
+    let startX = 0;
+    let currentX = 0;
+    let dragging = false;
+    let moved = false;
+
+    const begin = x => {
+      if(openedSwipe && openedSwipe !== item) closeOpenedSwipe();
+      startX = x;
+      currentX = item.classList.contains('swiped') ? -SWIPE_WIDTH : 0;
+      dragging = true;
+      moved = false;
+      item.style.transition = 'none';
+    };
+    const move = x => {
+      if(!dragging) return;
+      let delta = x - startX + currentX;
+      if(delta > 0) delta = 0;
+      if(delta < -SWIPE_WIDTH) delta = -SWIPE_WIDTH;
+      if(Math.abs(delta - currentX) > 4) moved = true;
+      item.style.transform = `translateX(${delta}px)`;
+    };
+    const end = x => {
+      if(!dragging) return;
+      dragging = false;
+      item.style.transition = '';
+      let delta = x - startX + currentX;
+      const wrapper = item.closest('.record-swiper');
+      if(delta <= -44){
+        item.classList.add('swiped');
+        wrapper.classList.add('is-open');
+        item.style.transform = '';
+        openedSwipe = item;
+      } else {
+        item.classList.remove('swiped');
+        wrapper.classList.remove('is-open');
+        item.style.transform = '';
+        if(openedSwipe === item) openedSwipe = null;
+      }
+      item.dataset.moved = moved ? '1' : '0';
+      setTimeout(() => { item.dataset.moved = '0'; }, 80);
+    };
+
+    item.addEventListener('touchstart', e => begin(e.touches[0].clientX), {passive:true});
+    item.addEventListener('touchmove', e => move(e.touches[0].clientX), {passive:true});
+    item.addEventListener('touchend', e => end((e.changedTouches[0] || {}).clientX || startX));
+    item.addEventListener('pointerdown', e => { if(e.pointerType !== 'mouse') return; begin(e.clientX); });
+    item.addEventListener('pointermove', e => { if(e.pointerType !== 'mouse' || !dragging) return; move(e.clientX); });
+    item.addEventListener('pointerup', e => { if(e.pointerType !== 'mouse') return; end(e.clientX); });
+    item.addEventListener('pointercancel', () => end(startX));
+  });
+}
+
+function deleteRecord(id){
+  const records = loadRecords();
+  const target = records.find(item => item.id === id);
+  if(!target) return;
+  const ok = confirm(`确定删除这条记录吗？\n${target.person} · ${formatDateText(target.time)} · ${formatMoney(target.net)}`);
+  if(!ok) return;
+  saveRecords(records.filter(item => item.id !== id));
+  renderAll();
+  toast('这条牌局已经删掉了');
+}
+
+document.querySelectorAll('[data-open-page]').forEach(btn => btn.addEventListener('click', () => openPage(btn.dataset.openPage)));
+document.querySelectorAll('[data-back-share]').forEach(btn => btn.addEventListener('click', () => openPage('share')));
+document.getElementById('saveRecordBtn').addEventListener('click', saveRecord);
+document.getElementById('draftBtn').addEventListener('click', saveDraft);
+
+document.addEventListener('click', e => {
+  if(!e.target.closest('.record-swiper')) closeOpenedSwipe();
+});
+
+recentRecordsEl.addEventListener('click', e => {
+  const deleteBtn = e.target.closest('[data-delete-id]');
+  if(deleteBtn){
+    deleteRecord(Number(deleteBtn.dataset.deleteId));
+    return;
+  }
+  const item = e.target.closest('.record-item[data-record-id]');
+  if(!item) return;
+  if(item.dataset.moved === '1') return;
+  if(item.classList.contains('swiped')){
+    item.classList.remove('swiped');
+    const wrapper = item.closest('.record-swiper');
+    if(wrapper) wrapper.classList.remove('is-open');
+    if(openedSwipe === item) openedSwipe = null;
+  }
+});
+
+resetForm();
+renderAll();
+</script>
+</body>
+</html>
+
+
+
+

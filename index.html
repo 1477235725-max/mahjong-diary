@@ -223,6 +223,7 @@ body{
                 <p id="friendPoemDesc">还没有记录，等你记下第一场之后，这里会自动更新。</p>
                 <div class="meta-row">
                   <span class="meta" id="friendPoemCount">本月 0 场</span>
+                  <span class="meta" id="friendPoemWinRate">胜率 0%</span>
                   <span class="meta" id="friendPoemBest">最高单场 暂无</span>
                 </div>
               </div>
@@ -234,6 +235,7 @@ body{
                 <p id="friendDragonDesc">目前也还是空白，记录保存后你们两边都会同步显示。</p>
                 <div class="meta-row">
                   <span class="meta" id="friendDragonCount">本月 0 场</span>
+                  <span class="meta" id="friendDragonWinRate">胜率 0%</span>
                   <span class="meta" id="friendDragonBest">最高单场 暂无</span>
                 </div>
               </div>
@@ -262,6 +264,7 @@ body{
           <div class="field"><label>牌局时间</label><input id="recordTime" type="datetime-local"></div>
           <div class="field"><label>记录给谁</label><select id="recordPerson"><option>小诗</option><option>小龙</option></select></div>
           <div class="field"><label>本场结果</label><select id="recordResult"><option>赢了</option><option>输了</option></select></div>
+          <div class="field"><label>本场名次</label><select id="recordRank"><option>第1名</option><option>第2名</option><option>第3名</option><option>第4名</option></select></div>
           <div class="field"><label>输赢金额</label><input id="recordAmount" type="number" placeholder="例如：150"></div>
           <div class="field"><label>牌局地点（可选）</label><input id="recordLocation" placeholder="可不填，例如：家里 / 楼下棋牌室"></div>
           <div class="field"><label>牌搭子（可选）</label><input id="recordPartners" placeholder="可不填，例如：朋友局 / 家人局"></div>
@@ -287,7 +290,7 @@ body{
             <div class="summary-copy">
               <strong id="monthPoemTitle">小诗本月暂无记录</strong>
               <p id="monthPoemDesc">先记下第一场，系统才会开始计算净额和趋势。</p>
-              <div class="meta-row"><span class="meta" id="monthPoemBest">最高单场 暂无</span><span class="meta" id="monthPoemCount">记录 0 场</span></div>
+              <div class="meta-row"><span class="meta" id="monthPoemBest">最高单场 暂无</span><span class="meta" id="monthPoemWinRate">胜率 0%</span><span class="meta" id="monthPoemCount">记录 0 场</span></div>
             </div>
           </div>
           <div class="summary-item">
@@ -295,7 +298,7 @@ body{
             <div class="summary-copy">
               <strong id="monthDragonTitle">小龙本月暂无记录</strong>
               <p id="monthDragonDesc">等有记录后，这里会自动展示净额和月度变化。</p>
-              <div class="meta-row"><span class="meta" id="monthDragonBest">最高单场 暂无</span><span class="meta" id="monthDragonCount">记录 0 场</span></div>
+              <div class="meta-row"><span class="meta" id="monthDragonBest">最高单场 暂无</span><span class="meta" id="monthDragonWinRate">胜率 0%</span><span class="meta" id="monthDragonCount">记录 0 场</span></div>
             </div>
           </div>
         </div>
@@ -529,6 +532,7 @@ function saveRecord(){
     id: Date.now(),
     person: fields.person.value,
     result: fields.result.value,
+    rank: parseInt(fields.rank.value.replace('第', '').replace('名', '')),
     net: fields.result.value === '赢了' ? Math.abs(amount) : -Math.abs(amount),
     amount: Math.abs(amount),
     time: fields.time.value,

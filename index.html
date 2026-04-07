@@ -427,6 +427,7 @@ function resetForm(){
   fields.time.value = getNowInputValue();
   fields.person.value = '小诗';
   fields.result.value = '赢了';
+  fields.rank.value = '第1名';
   fields.amount.value = '';
   fields.location.value = '';
   fields.partners.value = '';
@@ -482,7 +483,16 @@ function getMonthRecords(records){
 }
 function getStats(records, person){
   const list = records.filter(item => item.person === person);
-  return { list, total: list.reduce((sum, item) => sum + item.net, 0), best: list.length ? Math.max(...list.map(item => item.net)) : null, count: list.length };
+  const winCount = list.filter(item => item.result === '赢了').length;
+  const winRate = list.length ? Math.round((winCount / list.length) * 100) : 0;
+  return {
+    list,
+    total: list.reduce((sum, item) => sum + item.net, 0),
+    best: list.length ? Math.max(...list.map(item => item.net)) : null,
+    count: list.length,
+    winCount,
+    winRate
+  };
 }
 
 function createEmptyRecent(){
@@ -608,6 +618,8 @@ async function saveRecord(){
   const amount = Number(fields.amount.value);
   if(!fields.time.value){ toast('先把牌局时间填一下'); return; }
   if(!amount){ toast('输赢金额还没填'); return; }
+  
+  console.log('开始保存记录...');
   const record = {
     id: Date.now(),
     person: fields.person.value,
@@ -620,13 +632,24 @@ async function saveRecord(){
     partners: fields.partners.value.trim(),
     note: fields.note.value.trim()
   };
+  console.log('记录对象:', record);
+  
   const records = await loadRecords();
+  console.log('当前记录数量:', records.length);
   records.push(record);
-  await saveRecords(records);
-  await renderAll();
-  openPage('share');
-  resetForm();
-  toast('这一场已经记好了，最近牌局已经更新');
+  console.log('添加后记录数量:', records.length);
+  
+  try {
+    await saveRecords(records);
+    console.log('保存成功');
+    await renderAll();
+    openPage('share');
+    resetForm();
+    toast('这一场已经记好了，最近牌局已经更新');
+  } catch (error) {
+    console.error('保存失败:', error);
+    toast('保存失败,请查看控制台');
+  }
 }
 
 function saveDraft(){ toast('先帮你存成草稿想象版，这版原型暂时不单独保存草稿'); }

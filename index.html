@@ -4,6 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>麻将日记</title>
+<script src="https://cdn.jsdelivr.net/npm/cloudbase-js-sdk@8.11.0/dist/cloudbase.full.min.js"></script>
 <style>
 :root{
   --bg:#f6f2ff;
@@ -351,6 +352,39 @@ body{
 <div class="toast" id="toast"></div>
 
 <script>
+// CloudBase 配置 - 请替换为你自己的配置
+const CLOUDBASE_CONFIG = {
+  envId: 'your-env-id',  // 环境ID,从CloudBase控制台获取
+  region: 'ap-shanghai'  // 地域,根据你的选择修改
+};
+
+// 初始化 CloudBase
+let db = null;
+let isCloudBaseReady = false;
+
+async function initCloudBase() {
+  try {
+    const app = tcb.init(CLOUDBASE_CONFIG);
+    db = app.database();
+    
+    // 检查是否已配置
+    if (CLOUDBASE_CONFIG.envId === 'your-env-id') {
+      console.warn('CloudBase未配置,使用本地存储');
+      return false;
+    }
+    
+    // 测试连接
+    await db.collection('records').count();
+    isCloudBaseReady = true;
+    console.log('CloudBase初始化成功');
+    return true;
+  } catch (error) {
+    console.warn('CloudBase连接失败,使用本地存储:', error);
+    isCloudBaseReady = false;
+    return false;
+  }
+}
+
 const STORAGE_KEY = 'mahjongDiaryRecordsV2';
 const pages = document.querySelectorAll('.page');
 const navItems = document.querySelectorAll('.nav-item');
@@ -398,10 +432,35 @@ function resetForm(){
   fields.note.value = '';
 }
 
-function loadRecords(){
+async function loadRecords(){
+  if (isCloudBaseReady) {
+    try {
+      const res = await db.collection('records')
+        .orderBy('time', 'desc')
+        .get();
+      return res.data || [];
+    } catch (error) {
+      console.warn('从云端加载失败,使用本地数据:', error);
+    }
+  }
   try { return JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]'); } catch { return []; }
 }
-function saveRecords(records){ localStorage.setItem(STORAGE_KEY, JSON.stringify(records)); }
+
+async function saveRecords(records){
+  if (isCloudBaseReady) {
+    try {
+      // 保存到云端
+      for (const record of records) {
+        await db.collection('records').doc(String(record.id)).set(record);
+      }
+      console.log('数据已同步到云端');
+      return;
+    } catch (error) {
+      console.warn('同步到云端失败,保存到本地:', error);
+    }
+  }
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(records));
+}
 function formatMoney(n){ if(n === 0) return '¥0'; return `¥${n > 0 ? '+' : ''}${n}`; }
 function formatDateText(value){
   if(!value) return '未填写时间';
@@ -512,8 +571,8 @@ function renderTrend(records){
   }).join('');
 }
 
-function renderAll(){
-  const allRecords = loadRecords();
+async function renderAll(){
+  const allRecords = await loadRecords();
   const monthRecords = getMonthRecords(allRecords);
   const statsPoem = getStats(monthRecords, '小诗');
   const statsDragon = getStats(monthRecords, '小龙');
@@ -524,7 +583,23 @@ function renderAll(){
   renderTrend(monthRecords);
 }
 
-function saveRecord(){
+// 页面加载时初始化
+(async function initApp(){
+  await initCloudBase();
+  resetForm();
+  await renderAll();
+  
+  // 如果配置了CloudBase,显示提示
+  if (isCloudBaseReady) {
+    toast('云端同步已启用');
+  } else {
+    setTimeout(() => {
+      toast('提示:配置CloudBase后可多人同步');
+    }, 1000);
+  }
+})();
+
+async function saveRecord(){
   const amount = Number(fields.amount.value);
   if(!fields.time.value){ toast('先把牌局时间填一下'); return; }
   if(!amount){ toast('输赢金额还没填'); return; }
@@ -540,10 +615,10 @@ function saveRecord(){
     partners: fields.partners.value.trim(),
     note: fields.note.value.trim()
   };
-  const records = loadRecords();
+  const records = await loadRecords();
   records.push(record);
-  saveRecords(records);
-  renderAll();
+  await saveRecords(records);
+  await renderAll();
   openPage('share');
   resetForm();
   toast('这一场已经记好了，最近牌局已经更新');
@@ -616,14 +691,15 @@ function bindSwipeItems(){
   });
 }
 
-function deleteRecord(id){
-  const records = loadRecords();
+async function deleteRecord(id){
+  const records = await loadRecords();
   const target = records.find(item => item.id === id);
   if(!target) return;
   const ok = confirm(`确定删除这条记录吗？\n${target.person} · ${formatDateText(target.time)} · ${formatMoney(target.net)}`);
   if(!ok) return;
-  saveRecords(records.filter(item => item.id !== id));
-  renderAll();
+  const newRecords = records.filter(item => item.id !== id);
+  await saveRecords(newRecords);
+  await renderAll();
   toast('这条牌局已经删掉了');
 }
 
@@ -652,9 +728,6 @@ recentRecordsEl.addEventListener('click', e => {
     if(openedSwipe === item) openedSwipe = null;
   }
 });
-
-resetForm();
-renderAll();
 </script>
 </body>
 </html>

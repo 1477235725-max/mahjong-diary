@@ -397,6 +397,7 @@ const fields = {
   time: document.getElementById('recordTime'),
   person: document.getElementById('recordPerson'),
   result: document.getElementById('recordResult'),
+  rank: document.getElementById('recordRank'),
   amount: document.getElementById('recordAmount'),
   location: document.getElementById('recordLocation'),
   partners: document.getElementById('recordPartners'),
@@ -511,7 +512,7 @@ function renderRecent(records){
           <div class="record-copy">
             <div class="amount-line">
               <div>
-                <strong>${item.person} · ${item.result}</strong>
+                <strong>${item.person} · 第${item.rank}名 · ${item.result}</strong>
                 <p>${formatDateText(item.time)}${item.location ? ' · ' + item.location : ''}</p>
               </div>
               <span class="amount ${item.net < 0 ? 'loss' : 'win'}">${formatMoney(item.net)}</span>
@@ -531,9 +532,11 @@ function renderRecent(records){
 function renderFriends(statsPoem, statsDragon){
   document.getElementById('friendPoemDesc').textContent = statsPoem.count ? `本月已记 ${statsPoem.count} 场，当前净额 ${formatMoney(statsPoem.total)}。` : '还没有记录，等你记下第一场之后，这里会自动更新。';
   document.getElementById('friendPoemCount').textContent = `本月 ${statsPoem.count} 场`;
+  document.getElementById('friendPoemWinRate').textContent = `胜率 ${statsPoem.winRate}% (${statsPoem.winCount}胜${statsPoem.count - statsPoem.winCount}负)`;
   document.getElementById('friendPoemBest').textContent = `最高单场 ${statsPoem.best === null ? '暂无' : formatMoney(statsPoem.best)}`;
   document.getElementById('friendDragonDesc').textContent = statsDragon.count ? `本月已记 ${statsDragon.count} 场，当前净额 ${formatMoney(statsDragon.total)}。` : '目前也还是空白，记录保存后你们两边都会同步显示。';
   document.getElementById('friendDragonCount').textContent = `本月 ${statsDragon.count} 场`;
+  document.getElementById('friendDragonWinRate').textContent = `胜率 ${statsDragon.winRate}% (${statsDragon.winCount}胜${statsDragon.count - statsDragon.winCount}负)`;
   document.getElementById('friendDragonBest').textContent = `最高单场 ${statsDragon.best === null ? '暂无' : formatMoney(statsDragon.best)}`;
 }
 
@@ -548,12 +551,14 @@ function renderMetrics(statsPoem, statsDragon, totalCount){
 function renderMonthSummary(statsPoem, statsDragon){
   document.getElementById('monthTitle').textContent = `${new Date().getMonth() + 1} 月总结`;
   document.getElementById('monthPoemTitle').textContent = statsPoem.count ? `小诗本月净额 ${formatMoney(statsPoem.total)}` : '小诗本月暂无记录';
-  document.getElementById('monthPoemDesc').textContent = statsPoem.count ? `这个月一共记录了 ${statsPoem.count} 场，趋势会按周自动汇总。` : '先记下第一场，系统才会开始计算净额和趋势。';
+  document.getElementById('monthPoemDesc').textContent = statsPoem.count ? `这个月一共记录了 ${statsPoem.count} 场，胜率 ${statsPoem.winRate}%，趋势会按周自动汇总。` : '先记下第一场，系统才会开始计算净额和趋势。';
   document.getElementById('monthPoemBest').textContent = `最高单场 ${statsPoem.best === null ? '暂无' : formatMoney(statsPoem.best)}`;
+  document.getElementById('monthPoemWinRate').textContent = `胜率 ${statsPoem.winRate}%`;
   document.getElementById('monthPoemCount').textContent = `记录 ${statsPoem.count} 场`;
   document.getElementById('monthDragonTitle').textContent = statsDragon.count ? `小龙本月净额 ${formatMoney(statsDragon.total)}` : '小龙本月暂无记录';
-  document.getElementById('monthDragonDesc').textContent = statsDragon.count ? `这个月一共记录了 ${statsDragon.count} 场，趋势会按周自动汇总。` : '等有记录后，这里会自动展示净额和月度变化。';
+  document.getElementById('monthDragonDesc').textContent = statsDragon.count ? `这个月一共记录了 ${statsDragon.count} 场，胜率 ${statsDragon.winRate}%，趋势会按周自动汇总。` : '等有记录后，这里会自动展示净额和月度变化。';
   document.getElementById('monthDragonBest').textContent = `最高单场 ${statsDragon.best === null ? '暂无' : formatMoney(statsDragon.best)}`;
+  document.getElementById('monthDragonWinRate').textContent = `胜率 ${statsDragon.winRate}%`;
   document.getElementById('monthDragonCount').textContent = `记录 ${statsDragon.count} 场`;
 }
 

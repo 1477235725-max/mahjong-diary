@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>麻将日记</title>
-<script src="https://cdn.jsdelivr.net/npm/leancloud-storage@4.15.2/dist/av-min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/cloudbase-js-sdk@8.11.0/dist/cloudbase.full.min.js"></script>
 <style>
 :root{
   --bg:#f6f2ff;
@@ -352,55 +352,54 @@ body{
 <div class="toast" id="toast"></div>
 
 <script>
-// LeanCloud 配置 - 请替换为你自己的配置
-const LEANCLOUD_CONFIG = {
-  appId: 'your-app-id',  // 从LeanCloud控制台获取
-  appKey: 'your-app-key', // 从LeanCloud控制台获取
-  serverURLs: 'https://your-app-id.leancloud.cn' // 从LeanCloud控制台获取
+// CloudBase 配置
+const CLOUDBASE_CONFIG = {
+  envId: 'mahjong-diary-9gu6yzvg524a0273',
+  region: 'ap-shanghai'
 };
 
-// 初始化 LeanCloud
-let isCloudReady = false;
-let Records = null;
+// 初始化 CloudBase
+let db = null;
+let isCloudBaseReady = false;
 
-async function initCloud() {
+async function initCloudBase() {
   try {
-    console.log('正在初始化 LeanCloud...', LEANCLOUD_CONFIG.appId);
+    console.log('正在初始化 CloudBase...', CLOUDBASE_CONFIG.envId);
+    const app = tcb.init(CLOUDBASE_CONFIG);
+    db = app.database();
 
     // 检查是否已配置
-    if (LEANCLOUD_CONFIG.appId === 'your-app-id') {
-      console.warn('LeanCloud未配置,使用本地存储');
+    if (CLOUDBASE_CONFIG.envId === 'your-env-id') {
+      console.warn('CloudBase未配置,使用本地存储');
       return false;
     }
 
-    // 初始化 LeanCloud
-    AV.init({
-      appId: LEANCLOUD_CONFIG.appId,
-      appKey: LEANCLOUD_CONFIG.appKey,
-      serverURLs: LEANCLOUD_CONFIG.serverURLs
-    });
-
-    // 定义 Records 类
-    Records = AV.Object.extend('Records');
+    // 匿名登录
+    try {
+      const auth = app.auth();
+      await auth.signInAnonymously();
+      console.log('✅ 匿名登录成功');
+    } catch (authError) {
+      console.log('匿名登录失败(可能已登录):', authError.message);
+    }
 
     // 测试连接
     try {
-      const query = new AV.Query('Records');
-      query.limit(1);
-      await query.find();
-      isCloudReady = true;
-      console.log('✅ LeanCloud初始化成功,云端同步已启用');
+      await db.collection('records').count();
+      isCloudBaseReady = true;
+      console.log('✅ CloudBase初始化成功,云端同步已启用');
       return true;
-    } catch (queryError) {
-      // 查询失败可能是因为表不存在,但配置是对的
-      isCloudReady = true;
-      console.log('✅ LeanCloud配置完成(表可能为空),云端同步已启用');
+    } catch (countError) {
+      // count失败也继续尝试使用
+      console.log('count() 失败,但继续尝试使用CloudBase...');
+      isCloudBaseReady = true;
+      console.log('✅ CloudBase配置完成,云端同步已启用');
       return true;
     }
   } catch (error) {
-    console.error('❌ LeanCloud连接失败,使用本地存储:', error);
+    console.error('❌ CloudBase连接失败,使用本地存储:', error);
     console.error('错误详情:', error.message);
-    isCloudReady = false;
+    isCloudBaseReady = false;
     return false;
   }
 }
@@ -455,34 +454,19 @@ function resetForm(){
 }
 
 async function loadRecords(){
-  if (isCloudReady) {
+  if (isCloudBaseReady) {
     try {
       console.log('正在从云端加载记录...');
-      const query = new AV.Query('Records');
-      query.descending('time');
-      const results = await query.find();
-
-      // 转换为标准格式
-      const records = results.map(obj => ({
-        id: obj.id,
-        person: obj.get('person'),
-        result: obj.get('result'),
-        rank: obj.get('rank'),
-        net: obj.get('net'),
-        amount: obj.get('amount'),
-        time: obj.get('time'),
-        location: obj.get('location'),
-        partners: obj.get('partners'),
-        note: obj.get('note')
-      }));
-
-      console.log('✅ 从云端加载了', records.length, '条记录');
-      return records;
+      const res = await db.collection('records')
+        .orderBy('time', 'desc')
+        .get();
+      console.log('✅ 从云端加载了', res.data.length, '条记录');
+      return res.data || [];
     } catch (error) {
       console.error('❌ 从云端加载失败,使用本地数据:', error);
       console.error('错误详情:', error.message);
       // 降级到本地存储
-      isCloudReady = false;
+      isCloudBaseReady = false;
     }
   }
   // 从本地加载
@@ -497,33 +481,13 @@ async function loadRecords(){
 }
 
 async function saveRecords(records){
-  if (isCloudReady) {
+  if (isCloudBaseReady) {
     try {
       console.log('正在保存到云端,记录数:', records.length);
       // 保存到云端
       for (const record of records) {
-        const recordObj = new Records();
-        if (typeof record.id === 'string' && record.id.startsWith('cloud')) {
-          // 已存在的记录,更新
-          const query = new AV.Query('Records');
-          recordObj.id = record.id;
-        } else {
-          // 新记录
-          recordObj.id = record.id.toString();
-        }
-
-        recordObj.set('person', record.person);
-        recordObj.set('result', record.result);
-        recordObj.set('rank', record.rank);
-        recordObj.set('net', record.net);
-        recordObj.set('amount', record.amount);
-        recordObj.set('time', record.time);
-        recordObj.set('location', record.location);
-        recordObj.set('partners', record.partners);
-        recordObj.set('note', record.note);
-
-        await recordObj.save();
-        console.log('已保存记录:', recordObj.id);
+        await db.collection('records').doc(String(record.id)).set(record);
+        console.log('已保存记录:', record.id);
       }
       console.log('✅ 数据已同步到云端');
       return;
@@ -531,7 +495,7 @@ async function saveRecords(records){
       console.error('❌ 同步到云端失败,保存到本地:', error);
       console.error('错误详情:', error.message);
       // 降级到本地存储
-      isCloudReady = false;
+      isCloudBaseReady = false;
     }
   }
   // 保存到本地
@@ -675,16 +639,16 @@ async function renderAll(){
 
 // 页面加载时初始化
 (async function initApp(){
-  await initCloud();
+  await initCloudBase();
   resetForm();
   await renderAll();
 
-  // 如果配置了云端服务,显示提示
-  if (isCloudReady) {
+  // 如果配置了CloudBase,显示提示
+  if (isCloudBaseReady) {
     toast('云端同步已启用');
   } else {
     setTimeout(() => {
-      toast('提示:配置LeanCloud后可多人同步');
+      toast('提示:配置CloudBase后可多人同步');
     }, 1000);
   }
 })();

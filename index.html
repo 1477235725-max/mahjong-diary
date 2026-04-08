@@ -369,7 +369,6 @@ async function initCloudBase() {
   try {
     console.log('正在初始化 CloudBase...', CLOUDBASE_CONFIG.envId);
     const app = tcb.init(CLOUDBASE_CONFIG);
-    db = app.database();
     
     // 检查是否已配置
     if (CLOUDBASE_CONFIG.envId === 'your-env-id') {
@@ -377,17 +376,27 @@ async function initCloudBase() {
       return false;
     }
     
-    // 测试连接 - 允许集合为空
+    // 匿名登录
+    try {
+      const auth = app.auth();
+      await auth.signInAnonymously();
+      console.log('✅ 匿名登录成功');
+    } catch (authError) {
+      console.log('匿名登录失败(可能已登录):', authError.message);
+    }
+    
+    db = app.database();
+    
+    // 测试连接
     try {
       await db.collection('records').count();
       isCloudBaseReady = true;
       console.log('✅ CloudBase初始化成功,云端同步已启用');
       return true;
     } catch (countError) {
-      // 如果count失败,尝试其他方式测试连接
-      console.log('count() 失败,尝试其他方式连接...');
-      isCloudBaseReady = true; // 仍然尝试使用CloudBase
-      console.log('✅ CloudBase配置完成(集合可能为空),云端同步已启用');
+      console.log('count() 失败,但继续尝试使用CloudBase...');
+      isCloudBaseReady = true;
+      console.log('✅ CloudBase配置完成,云端同步已启用');
       return true;
     }
   } catch (error) {

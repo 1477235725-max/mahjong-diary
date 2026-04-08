@@ -323,7 +323,12 @@ body{
       </div>
       <section class="section">
         <div class="trend-card card">
-          <div class="section-head"><h3>胜负趋势图</h3><span>按周查看</span></div>
+          <div class="section-head"><h3>胜负趋势图</h3></div>
+          <div style="display:flex;gap:8px;margin-bottom:12px;">
+            <button class="btn btn-soft" id="trendAll" style="padding:8px 12px;font-size:13px;">全部</button>
+            <button class="btn btn-soft" id="trendPoem" style="padding:8px 12px;font-size:13px;">小诗</button>
+            <button class="btn btn-soft" id="trendDragon" style="padding:8px 12px;font-size:13px;">小龙</button>
+          </div>
           <div class="chart" id="trendChart"></div>
         </div>
       </section>
@@ -641,9 +646,13 @@ function renderMonthSummary(statsPoem, statsDragon){
   document.getElementById('monthDragonCount').textContent = `记录 ${statsDragon.count} 场`;
 }
 
-function renderTrend(records){
+function renderTrend(records, filterPerson = null){
+  let filteredRecords = records;
+  if (filterPerson) {
+    filteredRecords = records.filter(item => item.person === filterPerson);
+  }
   const weeks = [0,0,0,0];
-  records.forEach(item => {
+  filteredRecords.forEach(item => {
     const date = new Date(item.time);
     if(Number.isNaN(date.getTime())) return;
     weeks[Math.min(3, Math.floor((date.getDate()-1)/7))] += item.net;
@@ -655,8 +664,14 @@ function renderTrend(records){
   }).join('');
 }
 
+let currentTrendFilter = null; // 当前趋势图筛选：null=全部, '小诗', '小龙'
+
 async function renderAll(){
   const allRecords = await loadRecords();
+  await renderAllWithoutReload(allRecords);
+}
+
+async function renderAllWithoutReload(allRecords){
   const monthRecords = getMonthRecords(allRecords);
   const statsPoem = getStats(monthRecords, '小诗');
   const statsDragon = getStats(monthRecords, '小龙');
@@ -664,7 +679,32 @@ async function renderAll(){
   renderFriends(statsPoem, statsDragon);
   renderRecent(allRecords);
   renderMonthSummary(statsPoem, statsDragon);
-  renderTrend(monthRecords);
+  renderTrend(monthRecords, currentTrendFilter);
+  updateTrendButtons();
+}
+
+function updateTrendButtons(){
+  const btnAll = document.getElementById('trendAll');
+  const btnPoem = document.getElementById('trendPoem');
+  const btnDragon = document.getElementById('trendDragon');
+
+  // 重置所有按钮样式
+  [btnAll, btnPoem, btnDragon].forEach(btn => {
+    btn.classList.remove('btn-solid');
+    btn.classList.add('btn-soft');
+  });
+
+  // 设置当前选中按钮
+  if (currentTrendFilter === null) {
+    btnAll.classList.remove('btn-soft');
+    btnAll.classList.add('btn-solid');
+  } else if (currentTrendFilter === '小诗') {
+    btnPoem.classList.remove('btn-soft');
+    btnPoem.classList.add('btn-solid');
+  } else if (currentTrendFilter === '小龙') {
+    btnDragon.classList.remove('btn-soft');
+    btnDragon.classList.add('btn-solid');
+  }
 }
 
 // 页面加载时初始化
@@ -791,16 +831,6 @@ function bindSwipeItems(){
 async function deleteRecord(id){
   console.log('删除记录, ID:', id, '类型:', typeof id);
 
-  // 如果云端已启用，先从云端删除
-  if (isCloudReady && db) {
-    try {
-      await db.collection('mahjong_records').doc(String(id)).delete();
-      console.log('✅ 已从云端删除记录:', id);
-    } catch (error) {
-      console.error('❌ 从云端删除失败:', error);
-    }
-  }
-
   const records = await loadRecords();
   console.log('当前所有记录:', records.map(r => ({id: r.id, type: typeof r.id})));
   const target = records.find(item => item.id === id || String(item.id) === String(id));
@@ -810,10 +840,26 @@ async function deleteRecord(id){
   }
   const ok = confirm(`确定删除这条记录吗？\n${target.person} · ${formatDateText(target.time)} · ${formatMoney(target.net)}`);
   if(!ok) return;
+
+  // 从本地记录中删除
   const newRecords = records.filter(item => item.id !== id && String(item.id) !== String(id));
   console.log('删除后剩余记录数:', newRecords.length);
-  await saveRecords(newRecords);
-  await renderAll();
+
+  // 如果云端已启用，从云端删除
+  if (isCloudReady && db) {
+    try {
+      await db.collection('mahjong_records').doc(String(id)).delete();
+      console.log('✅ 已从云端删除记录:', id);
+    } catch (error) {
+      console.error('❌ 从云端删除失败:', error);
+    }
+  }
+
+  // 保存到本地
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(newRecords));
+
+  // 直接用新数据渲染，不从云端重新加载
+  await renderAllWithoutReload(newRecords);
   toast('这条牌局已经删掉了');
 }
 
@@ -821,6 +867,20 @@ document.querySelectorAll('[data-open-page]').forEach(btn => btn.addEventListene
 document.querySelectorAll('[data-back-share]').forEach(btn => btn.addEventListener('click', () => openPage('share')));
 document.getElementById('saveRecordBtn').addEventListener('click', saveRecord);
 document.getElementById('draftBtn').addEventListener('click', saveDraft);
+
+// 趋势图筛选按钮
+document.getElementById('trendAll').addEventListener('click', () => {
+  currentTrendFilter = null;
+  renderAll();
+});
+document.getElementById('trendPoem').addEventListener('click', () => {
+  currentTrendFilter = '小诗';
+  renderAll();
+});
+document.getElementById('trendDragon').addEventListener('click', () => {
+  currentTrendFilter = '小龙';
+  renderAll();
+});
 
 document.addEventListener('click', e => {
   if(!e.target.closest('.record-swiper')) closeOpenedSwipe();

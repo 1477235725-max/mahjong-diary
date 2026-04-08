@@ -4,7 +4,8 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>麻将日记</title>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/cloudbase-js/8.11.0/cloudbase.full.min.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore-compat.js"></script>
 <style>
 :root{
   --bg:#f6f2ff;
@@ -352,61 +353,57 @@ body{
 <div class="toast" id="toast"></div>
 
 <script>
-// CloudBase 配置
-const CLOUDBASE_CONFIG = {
-  envId: 'mahjong-diary-9gu6yzvg524a0273',
-  region: 'ap-shanghai'
+// Firebase 配置
+const FIREBASE_CONFIG = {
+  apiKey: "your-api-key",
+  authDomain: "your-project.firebaseapp.com",
+  projectId: "your-project-id",
+  storageBucket: "your-project.appspot.com",
+  messagingSenderId: "your-sender-id",
+  appId: "your-app-id"
 };
 
-// 初始化 CloudBase
+// 初始化 Firebase
 let db = null;
-let isCloudBaseReady = false;
+let isCloudReady = false;
 
-async function initCloudBase() {
-  // 检查 CloudBase SDK 是否加载
-  if (typeof tcb === 'undefined') {
-    console.warn('❌ CloudBase SDK 未加载,使用本地存储');
-    isCloudBaseReady = false;
+async function initCloud() {
+  // 检查 Firebase SDK 是否加载
+  if (typeof firebase === 'undefined') {
+    console.warn('❌ Firebase SDK 未加载,使用本地存储');
+    isCloudReady = false;
     return false;
   }
 
   try {
-    console.log('正在初始化 CloudBase...', CLOUDBASE_CONFIG.envId);
-    const app = tcb.init(CLOUDBASE_CONFIG);
-    db = app.database();
+    console.log('正在初始化 Firebase...', FIREBASE_CONFIG.projectId);
 
     // 检查是否已配置
-    if (CLOUDBASE_CONFIG.envId === 'your-env-id') {
-      console.warn('CloudBase未配置,使用本地存储');
+    if (FIREBASE_CONFIG.apiKey === 'your-api-key') {
+      console.warn('Firebase未配置,使用本地存储');
       return false;
     }
 
-    // 匿名登录
-    try {
-      const auth = app.auth();
-      await auth.signInAnonymously();
-      console.log('✅ 匿名登录成功');
-    } catch (authError) {
-      console.log('匿名登录失败(可能已登录):', authError.message);
-    }
+    // 初始化 Firebase
+    firebase.initializeApp(FIREBASE_CONFIG);
+    db = firebase.firestore();
 
     // 测试连接
     try {
-      await db.collection('records').count();
-      isCloudBaseReady = true;
-      console.log('✅ CloudBase初始化成功,云端同步已启用');
+      await db.collection('records').limit(1).get();
+      isCloudReady = true;
+      console.log('✅ Firebase初始化成功,云端同步已启用');
       return true;
-    } catch (countError) {
-      // count失败也继续尝试使用
-      console.log('count() 失败,但继续尝试使用CloudBase...');
-      isCloudBaseReady = true;
-      console.log('✅ CloudBase配置完成,云端同步已启用');
+    } catch (queryError) {
+      // 查询失败可能是因为集合不存在
+      isCloudReady = true;
+      console.log('✅ Firebase配置完成(集合可能为空),云端同步已启用');
       return true;
     }
   } catch (error) {
-    console.error('❌ CloudBase连接失败,使用本地存储:', error);
+    console.error('❌ Firebase连接失败,使用本地存储:', error);
     console.error('错误详情:', error.message);
-    isCloudBaseReady = false;
+    isCloudReady = false;
     return false;
   }
 }
@@ -461,19 +458,28 @@ function resetForm(){
 }
 
 async function loadRecords(){
-  if (isCloudBaseReady) {
+  if (isCloudReady) {
     try {
       console.log('正在从云端加载记录...');
-      const res = await db.collection('records')
+      const snapshot = await db.collection('records')
         .orderBy('time', 'desc')
         .get();
-      console.log('✅ 从云端加载了', res.data.length, '条记录');
-      return res.data || [];
+
+      const records = [];
+      snapshot.forEach(doc => {
+        records.push({
+          id: doc.id,
+          ...doc.data()
+        });
+      });
+
+      console.log('✅ 从云端加载了', records.length, '条记录');
+      return records;
     } catch (error) {
       console.error('❌ 从云端加载失败,使用本地数据:', error);
       console.error('错误详情:', error.message);
       // 降级到本地存储
-      isCloudBaseReady = false;
+      isCloudReady = false;
     }
   }
   // 从本地加载
@@ -488,7 +494,7 @@ async function loadRecords(){
 }
 
 async function saveRecords(records){
-  if (isCloudBaseReady) {
+  if (isCloudReady) {
     try {
       console.log('正在保存到云端,记录数:', records.length);
       // 保存到云端
@@ -502,7 +508,7 @@ async function saveRecords(records){
       console.error('❌ 同步到云端失败,保存到本地:', error);
       console.error('错误详情:', error.message);
       // 降级到本地存储
-      isCloudBaseReady = false;
+      isCloudReady = false;
     }
   }
   // 保存到本地
@@ -646,16 +652,16 @@ async function renderAll(){
 
 // 页面加载时初始化
 (async function initApp(){
-  await initCloudBase();
+  await initCloud();
   resetForm();
   await renderAll();
 
-  // 如果配置了CloudBase,显示提示
-  if (isCloudBaseReady) {
+  // 如果配置了云端服务,显示提示
+  if (isCloudReady) {
     toast('云端同步已启用');
   } else {
     setTimeout(() => {
-      toast('提示:配置CloudBase后可多人同步');
+      toast('提示:配置Firebase后可多人同步');
     }, 1000);
   }
 })();

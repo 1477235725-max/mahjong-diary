@@ -355,12 +355,13 @@ body{
 <script>
 // Firebase 配置
 const FIREBASE_CONFIG = {
-  apiKey: "your-api-key",
-  authDomain: "your-project.firebaseapp.com",
-  projectId: "your-project-id",
-  storageBucket: "your-project.appspot.com",
-  messagingSenderId: "your-sender-id",
-  appId: "your-app-id"
+  apiKey: "AIzaSyDK6V6aBekOK0bW6ja2Ei-_8aUAXXbcRRw",
+  authDomain: "mahjong-diary.firebaseapp.com",
+  projectId: "mahjong-diary",
+  storageBucket: "mahjong-diary.firebasestorage.app",
+  messagingSenderId: "865145233935",
+  appId: "1:865145233935:web:88ffab579635edf274397a",
+  measurementId: "G-SCZMSLS1NZ"
 };
 
 // 初始化 Firebase
@@ -390,7 +391,7 @@ async function initCloud() {
 
     // 测试连接
     try {
-      await db.collection('records').limit(1).get();
+      await db.collection('mahjong_records').limit(1).get();
       isCloudReady = true;
       console.log('✅ Firebase初始化成功,云端同步已启用');
       return true;
@@ -461,7 +462,7 @@ async function loadRecords(){
   if (isCloudReady) {
     try {
       console.log('正在从云端加载记录...');
-      const snapshot = await db.collection('records')
+      const snapshot = await db.collection('mahjong_records')
         .orderBy('time', 'desc')
         .get();
 
@@ -499,7 +500,7 @@ async function saveRecords(records){
       console.log('正在保存到云端,记录数:', records.length);
       // 保存到云端
       for (const record of records) {
-        await db.collection('records').doc(String(record.id)).set(record);
+        await db.collection('mahjong_records').doc(String(record.id)).set(record);
         console.log('已保存记录:', record.id);
       }
       console.log('✅ 数据已同步到云端');

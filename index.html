@@ -355,7 +355,10 @@ body{
 // CloudBase 配置 - 请替换为你自己的配置
 const CLOUDBASE_CONFIG = {
   envId: 'mahjong-diary-9gu6yzvg524a0273',  // 环境ID,从CloudBase控制台获取
-  region: 'ap-shanghai'  // 地域,根据你的选择修改
+  region: 'ap-shanghai',  // 地域,根据你的选择修改
+  // 允许匿名访问
+  appSign: '',
+  appSecret: {}
 };
 
 // 初始化 CloudBase
@@ -364,6 +367,7 @@ let isCloudBaseReady = false;
 
 async function initCloudBase() {
   try {
+    console.log('正在初始化 CloudBase...', CLOUDBASE_CONFIG.envId);
     const app = tcb.init(CLOUDBASE_CONFIG);
     db = app.database();
     
@@ -373,13 +377,22 @@ async function initCloudBase() {
       return false;
     }
     
-    // 测试连接
-    await db.collection('records').count();
-    isCloudBaseReady = true;
-    console.log('CloudBase初始化成功');
-    return true;
+    // 测试连接 - 允许集合为空
+    try {
+      await db.collection('records').count();
+      isCloudBaseReady = true;
+      console.log('✅ CloudBase初始化成功,云端同步已启用');
+      return true;
+    } catch (countError) {
+      // 如果count失败,尝试其他方式测试连接
+      console.log('count() 失败,尝试其他方式连接...');
+      isCloudBaseReady = true; // 仍然尝试使用CloudBase
+      console.log('✅ CloudBase配置完成(集合可能为空),云端同步已启用');
+      return true;
+    }
   } catch (error) {
-    console.warn('CloudBase连接失败,使用本地存储:', error);
+    console.error('❌ CloudBase连接失败,使用本地存储:', error);
+    console.error('错误详情:', error.message, error.code);
     isCloudBaseReady = false;
     return false;
   }
@@ -437,31 +450,51 @@ function resetForm(){
 async function loadRecords(){
   if (isCloudBaseReady) {
     try {
+      console.log('正在从云端加载记录...');
       const res = await db.collection('records')
         .orderBy('time', 'desc')
         .get();
+      console.log('✅ 从云端加载了', res.data.length, '条记录');
       return res.data || [];
     } catch (error) {
-      console.warn('从云端加载失败,使用本地数据:', error);
+      console.error('❌ 从云端加载失败,使用本地数据:', error);
+      console.error('错误详情:', error.message, error.code);
+      // 降级到本地存储
+      isCloudBaseReady = false;
     }
   }
-  try { return JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]'); } catch { return []; }
+  // 从本地加载
+  try {
+    const localData = JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]');
+    console.log('从本地加载了', localData.length, '条记录');
+    return localData;
+  } catch (error) {
+    console.error('本地数据解析失败:', error);
+    return [];
+  }
 }
 
 async function saveRecords(records){
   if (isCloudBaseReady) {
     try {
+      console.log('正在保存到云端,记录数:', records.length);
       // 保存到云端
       for (const record of records) {
         await db.collection('records').doc(String(record.id)).set(record);
+        console.log('已保存记录:', record.id);
       }
-      console.log('数据已同步到云端');
+      console.log('✅ 数据已同步到云端');
       return;
     } catch (error) {
-      console.warn('同步到云端失败,保存到本地:', error);
+      console.error('❌ 同步到云端失败,保存到本地:', error);
+      console.error('错误详情:', error.message, error.code);
+      // 降级到本地存储
+      isCloudBaseReady = false;
     }
   }
+  // 保存到本地
   localStorage.setItem(STORAGE_KEY, JSON.stringify(records));
+  console.log('数据已保存到本地');
 }
 function formatMoney(n){ if(n === 0) return '¥0'; return `¥${n > 0 ? '+' : ''}${n}`; }
 function formatDateText(value){

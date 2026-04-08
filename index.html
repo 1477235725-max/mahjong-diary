@@ -363,6 +363,13 @@ let db = null;
 let isCloudBaseReady = false;
 
 async function initCloudBase() {
+  // 检查 CloudBase SDK 是否加载
+  if (typeof tcb === 'undefined') {
+    console.warn('❌ CloudBase SDK 未加载,使用本地存储');
+    isCloudBaseReady = false;
+    return false;
+  }
+
   try {
     console.log('正在初始化 CloudBase...', CLOUDBASE_CONFIG.envId);
     const app = tcb.init(CLOUDBASE_CONFIG);

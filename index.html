@@ -789,12 +789,29 @@ function bindSwipeItems(){
 }
 
 async function deleteRecord(id){
+  console.log('删除记录, ID:', id, '类型:', typeof id);
+
+  // 如果云端已启用，先从云端删除
+  if (isCloudReady && db) {
+    try {
+      await db.collection('mahjong_records').doc(String(id)).delete();
+      console.log('✅ 已从云端删除记录:', id);
+    } catch (error) {
+      console.error('❌ 从云端删除失败:', error);
+    }
+  }
+
   const records = await loadRecords();
-  const target = records.find(item => item.id === id);
-  if(!target) return;
+  console.log('当前所有记录:', records.map(r => ({id: r.id, type: typeof r.id})));
+  const target = records.find(item => item.id === id || String(item.id) === String(id));
+  if(!target){
+    console.warn('未找到要删除的记录');
+    return;
+  }
   const ok = confirm(`确定删除这条记录吗？\n${target.person} · ${formatDateText(target.time)} · ${formatMoney(target.net)}`);
   if(!ok) return;
-  const newRecords = records.filter(item => item.id !== id);
+  const newRecords = records.filter(item => item.id !== id && String(item.id) !== String(id));
+  console.log('删除后剩余记录数:', newRecords.length);
   await saveRecords(newRecords);
   await renderAll();
   toast('这条牌局已经删掉了');

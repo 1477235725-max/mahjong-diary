@@ -480,62 +480,78 @@ function resetForm(){
 }
 
 async function loadRecords(){
-  if (isCloudReady) {
-    try {
-      console.log('正在从云端加载记录...');
-      const snapshot = await db.collection('mahjong_records')
-        .orderBy('time', 'desc')
-        .get();
-
-      const records = [];
-      snapshot.forEach(doc => {
-        records.push({
-          id: doc.id,
-          ...doc.data()
-        });
-      });
-
-      console.log('✅ 从云端加载了', records.length, '条记录');
-      return records;
-    } catch (error) {
-      console.error('❌ 从云端加载失败,使用本地数据:', error);
-      console.error('错误详情:', error.message);
-      // 降级到本地存储
-      isCloudReady = false;
-    }
-  }
-  // 从本地加载
+  // 优先从本地加载（作为主要数据源）
   try {
     const localData = JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]');
-    console.log('从本地加载了', localData.length, '条记录');
+    console.log('✅ 从本地加载了', localData.length, '条记录');
+
+    // 如果云端可用，从云端加载数据并合并
+    if (isCloudReady) {
+      try {
+        console.log('正在从云端同步最新数据...');
+        const snapshot = await db.collection('mahjong_records')
+          .orderBy('time', 'desc')
+          .get();
+
+        const cloudRecords = [];
+        snapshot.forEach(doc => {
+          cloudRecords.push({
+            id: doc.id,
+            ...doc.data()
+          });
+        });
+
+        console.log('✅ 从云端加载了', cloudRecords.length, '条记录');
+
+        // 合并云端和本地数据（去重）
+        const mergedRecords = [...localData];
+        cloudRecords.forEach(cloudRecord => {
+          const exists = mergedRecords.find(r => String(r.id) === String(cloudRecord.id));
+          if (!exists) {
+            mergedRecords.push(cloudRecord);
+          }
+        });
+
+        // 按时间排序
+        mergedRecords.sort((a, b) => new Date(b.time) - new Date(a.time));
+
+        console.log('✅ 合并后共有', mergedRecords.length, '条记录');
+        return mergedRecords;
+      } catch (error) {
+        console.error('❌ 从云端同步失败,使用本地数据:', error);
+        console.error('错误详情:', error.message);
+        return localData;
+      }
+    }
+
     return localData;
   } catch (error) {
-    console.error('本地数据解析失败:', error);
+    console.error('❌ 本地数据解析失败:', error);
     return [];
   }
 }
 
 async function saveRecords(records){
+  // 保存到本地（始终保存，作为备份）
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(records));
+  console.log('✅ 数据已保存到本地');
+
+  // 如果云端已启用，也保存到云端
   if (isCloudReady) {
     try {
-      console.log('正在保存到云端,记录数:', records.length);
+      console.log('正在同步到云端,记录数:', records.length);
       // 保存到云端
       for (const record of records) {
         await db.collection('mahjong_records').doc(String(record.id)).set(record);
-        console.log('已保存记录:', record.id);
+        console.log('已同步记录:', record.id);
       }
       console.log('✅ 数据已同步到云端');
-      return;
     } catch (error) {
-      console.error('❌ 同步到云端失败,保存到本地:', error);
+      console.error('❌ 同步到云端失败:', error);
       console.error('错误详情:', error.message);
-      // 降级到本地存储
-      isCloudReady = false;
+      // 注意：不降级，继续尝试云端同步
     }
   }
-  // 保存到本地
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(records));
-  console.log('数据已保存到本地');
 }
 function formatMoney(n){ if(n === 0) return '¥0'; return `¥${n > 0 ? '+' : ''}${n}`; }
 function formatDateText(value){

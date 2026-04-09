@@ -189,6 +189,10 @@ body{
 .nav-item i{font-style:normal;font-size:18px;transition:.22s transform}
 .nav-item.active{color:var(--brand-deep);transform:translateY(-2px)}
 .nav-item.active i{transform:scale(1.08)}
+.detail-row{display:flex;align-items:center;gap:8px;padding:8px 0;border-bottom:1px solid var(--line)}
+.detail-row:last-child{border-bottom:none}
+.detail-label{flex-shrink:0}
+.detail-value{flex:1;color:var(--text)}
 .toast{position:fixed;left:50%;bottom:24px;transform:translateX(-50%) translateY(12px);padding:12px 16px;border-radius:16px;background:rgba(37,31,54,.92);color:#fff;font-size:13px;opacity:0;pointer-events:none;transition:.25s;z-index:50;box-shadow:0 16px 30px rgba(37,31,54,.18)}
 .toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
 </style>
@@ -293,6 +297,48 @@ body{
           <button class="btn btn-solid" id="saveRecordBtn">保存记录</button>
         </div>
       </div>
+    </section>
+
+    <section class="page" id="page-detail">
+      <div class="topbar">
+        <button class="back-btn" data-back-share>←</button>
+        <div class="title"><strong>牌局详情</strong><span>完整信息查看</span></div>
+      </div>
+      <div class="summary-card card">
+        <div class="section-head"><h3 id="detailTitle">牌局详情</h3><span id="detailTime"></span></div>
+        <div class="summary-list">
+          <div class="summary-item">
+            <div class="stamp" id="detailStamp">诗</div>
+            <div class="summary-copy">
+              <strong id="detailPerson">小诗</strong>
+              <p id="detailResult">赢了 · 第1名</p>
+              <div class="meta-row">
+                <span class="meta" id="detailAmount">输赢金额 ¥150</span>
+                <span class="meta" id="detailNet">净额 +150</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <section class="section">
+        <div class="friend-card card">
+          <div class="section-head"><h3>详细信息</h3><span>备注和地点</span></div>
+          <div style="padding:16px;">
+            <div class="detail-row" style="margin-bottom:12px;">
+              <span class="detail-label" style="font-weight:800;font-size:13px;color:var(--sub);">牌局地点</span>
+              <span class="detail-value" id="detailLocation" style="font-size:14px;">未填写</span>
+            </div>
+            <div class="detail-row" style="margin-bottom:12px;">
+              <span class="detail-label" style="font-weight:800;font-size:13px;color:var(--sub);">牌搭子</span>
+              <span class="detail-value" id="detailPartners" style="font-size:14px;">未填写</span>
+            </div>
+            <div class="detail-row">
+              <span class="detail-label" style="font-weight:800;font-size:13px;color:var(--sub);display:block;margin-bottom:8px;">备注</span>
+              <div class="detail-value" id="detailNote" style="font-size:14px;line-height:1.7;background:#fcfbff;padding:12px;border-radius:16px;border:1px solid var(--line);">未填写</div>
+            </div>
+          </div>
+        </div>
+      </section>
     </section>
 
     <section class="page" id="page-month">
@@ -884,6 +930,11 @@ document.querySelectorAll('[data-back-share]').forEach(btn => btn.addEventListen
 document.getElementById('saveRecordBtn').addEventListener('click', saveRecord);
 document.getElementById('draftBtn').addEventListener('click', saveDraft);
 
+// 详情页的返回按钮
+document.querySelector('#page-detail .back-btn').addEventListener('click', () => {
+  openPage('share');
+});
+
 // 趋势图筛选按钮
 document.getElementById('trendAll').addEventListener('click', () => {
   currentTrendFilter = null;
@@ -916,8 +967,38 @@ recentRecordsEl.addEventListener('click', e => {
     const wrapper = item.closest('.record-swiper');
     if(wrapper) wrapper.classList.remove('is-open');
     if(openedSwipe === item) openedSwipe = null;
+  } else {
+    // 点击记录查看详情
+    const recordId = item.dataset.recordId;
+    showRecordDetail(Number(recordId));
   }
 });
+
+// 显示牌局详情
+async function showRecordDetail(id){
+  const records = await loadRecords();
+  const record = records.find(item => item.id === id || String(item.id) === String(id));
+  if(!record){
+    toast('未找到该记录');
+    return;
+  }
+
+  // 填充详情页数据
+  document.getElementById('detailStamp').textContent = record.person === '小诗' ? '诗' : '龙';
+  document.getElementById('detailStamp').className = `stamp ${record.net < 0 ? 'loss' : ''}`;
+  document.getElementById('detailTitle').textContent = `${record.person}的牌局`;
+  document.getElementById('detailTime').textContent = formatDateText(record.time);
+  document.getElementById('detailPerson').textContent = record.person;
+  document.getElementById('detailResult').textContent = `${record.result} · 第${record.rank}名`;
+  document.getElementById('detailAmount').textContent = `输赢金额 ¥${record.amount}`;
+  document.getElementById('detailNet').textContent = `净额 ${formatMoney(record.net)}`;
+  document.getElementById('detailNet').className = `meta ${record.net < 0 ? 'loss' : 'win'}`;
+  document.getElementById('detailLocation').textContent = record.location || '未填写';
+  document.getElementById('detailPartners').textContent = record.partners || '未填写';
+  document.getElementById('detailNote').textContent = record.note || '未填写';
+
+  openPage('detail');
+}
 </script>
 </body>
 </html>
